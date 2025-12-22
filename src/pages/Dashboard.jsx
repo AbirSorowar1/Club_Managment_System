@@ -1,4 +1,4 @@
-// Dashboard.jsx - Updated: Proper scrolling for long Recent Payments & Expenses
+// Dashboard.jsx - Updated: Added Analysis in Navigation + Proper Scrolling
 // App: Independent Club
 import { useEffect, useState } from "react";
 import { signOut } from "firebase/auth";
@@ -75,16 +75,16 @@ export default function Dashboard() {
             }))
         )
         .sort((a, b) => new Date(b.date) - new Date(a.date))
-        .slice(0, 20); // Increased limit a bit for more data visibility, but still controlled
+        .slice(0, 20);
 
     const recentExpenses = (expenses || [])
         .sort((a, b) => new Date(b.date) - new Date(a.date))
-        .slice(0, 20); // Same for expenses
+        .slice(0, 20);
 
     return (
         <div className={`min-h-screen ${darkMode ? 'bg-gray-950 text-white' : 'bg-gray-50 text-gray-900'} transition-all duration-700`}>
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 py-8 lg:py-16">
-                {/* Navigation - Mobile Responsive (Horizontal Scroll with Visible Scrollbar) */}
+                {/* Navigation - Updated with Analysis */}
                 <div className="mb-12 overflow-x-auto pb-4 -mx-4 px-4 scrollbar-visible">
                     <style jsx>{`
                         .scrollbar-visible::-webkit-scrollbar {
@@ -115,6 +115,7 @@ export default function Dashboard() {
                             { path: "/reports", label: "📊 Reports", colors: "from-purple-500 to-violet-600" },
                             { path: "/memberinfo", label: "📋 Member Info", colors: "from-indigo-500 to-purple-700" },
                             { path: "/settings", label: "⚙️ Settings", colors: "from-gray-600 to-gray-800" },
+                            { path: "/analysis", label: "📈 Analysis", colors: "from-pink-500 to-rose-600" }, // 🔥 নতুন Analysis বাটন
                         ].map(({ path, label, colors }) => (
                             <button
                                 key={path}
@@ -131,7 +132,7 @@ export default function Dashboard() {
                     </div>
                 </div>
 
-                {/* Header - Responsive */}
+                {/* Header */}
                 <div className="flex flex-col sm:flex-row justify-between items-start gap-6 mb-12">
                     <div>
                         <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight">
@@ -157,7 +158,7 @@ export default function Dashboard() {
                     </div>
                 </div>
 
-                {/* Stats Cards - Responsive */}
+                {/* Stats Cards */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
                     {[
                         { label: "Total Members", value: Object.keys(members).length, color: "white" },
@@ -174,9 +175,9 @@ export default function Dashboard() {
                     ))}
                 </div>
 
-                {/* Recent Activity - Responsive Grid with Fixed Height Scrollable Areas */}
+                {/* Recent Activity */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-10">
-                    {/* Recent Payments - Scrollable with fixed max height */}
+                    {/* Recent Payments */}
                     <div className="bg-gray-900/70 backdrop-blur-xl border border-gray-800 rounded-3xl p-6 sm:p-8 shadow-2xl flex flex-col">
                         <h3 className="text-2xl sm:text-3xl font-bold mb-6">Recent Payments</h3>
                         <div className="flex-1 overflow-y-auto scrollbar-visible max-h-96">
@@ -226,7 +227,7 @@ export default function Dashboard() {
                         </div>
                     </div>
 
-                    {/* Recent Expenses - Scrollable with fixed max height */}
+                    {/* Recent Expenses */}
                     <div className="bg-gray-900/70 backdrop-blur-xl border border-gray-800 rounded-3xl p-6 sm:p-8 shadow-2xl flex flex-col">
                         <h3 className="text-2xl sm:text-3xl font-bold mb-6">Recent Expenses</h3>
                         <div className="flex-1 overflow-y-auto scrollbar-visible max-h-96">
