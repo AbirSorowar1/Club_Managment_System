@@ -1,4 +1,4 @@
-// Expenses.jsx - Updated with Enter Key Support + Full Mobile Responsiveness
+// Expenses.jsx - Updated with Enter Key Support + Full Mobile Responsiveness + Scrollable Expense Table
 // All previous design preserved | App: Independent Club
 import { useEffect, useState, useRef } from "react";
 import { signOut } from "firebase/auth";
@@ -235,8 +235,8 @@ export default function Expenses() {
                     </div>
                 </div>
 
-                {/* Expense History Table - Responsive */}
-                <div className="bg-gray-900/70 backdrop-blur-xl border border-gray-800 rounded-3xl overflow-hidden shadow-2xl">
+                {/* Expense History Table - Scrollable with Visible Scrollbar */}
+                <div className="bg-gray-900/70 backdrop-blur-xl border border-gray-800 rounded-3xl shadow-2xl flex flex-col">
                     <div className="p-6 sm:p-8 border-b border-gray-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full sm:w-auto">
                             <label className="text-lg sm:text-xl font-semibold whitespace-nowrap">Filter by Date:</label>
@@ -249,70 +249,94 @@ export default function Expenses() {
                         </div>
                     </div>
 
-                    <div className="overflow-x-auto">
-                        <table className="w-full min-w-[800px]">
-                            <thead className="bg-gray-800/50">
-                                <tr>
-                                    {["Date", "Category", "Description", "Amount", "Running Total", "Actions"].map(h => (
-                                        <th key={h} className="px-4 sm:px-8 py-5 text-left text-xs sm:text-sm font-semibold uppercase tracking-wider opacity-80">{h}</th>
-                                    ))}
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-800">
-                                {filteredExpenses().length === 0 ? (
+                    {/* Scrollable Table Body */}
+                    <div className="flex-1 overflow-y-auto scrollbar-visible max-h-96">
+                        <style jsx>{`
+                            .scrollbar-visible::-webkit-scrollbar {
+                                width: 10px;
+                            }
+                            .scrollbar-visible::-webkit-scrollbar-track {
+                                background: #1e293b;
+                                border-radius: 10px;
+                            }
+                            .scrollbar-visible::-webkit-scrollbar-thumb {
+                                background: #4b5563;
+                                border-radius: 10px;
+                                border: 2px solid #1e293b;
+                            }
+                            .scrollbar-visible::-webkit-scrollbar-thumb:hover {
+                                background: #6b7280;
+                            }
+                            .scrollbar-visible {
+                                scrollbar-width: thin;
+                                scrollbar-color: #4b5563 #1e293b;
+                            }
+                        `}</style>
+                        <div className="overflow-x-auto">
+                            <table className="w-full min-w-[800px]">
+                                <thead className="bg-gray-800/50 sticky top-0">
                                     <tr>
-                                        <td colSpan={6} className="py-16 sm:py-20 text-center text-gray-500 text-lg sm:text-xl">
-                                            {filterDate ? "No expenses found for selected date" : "No expenses recorded yet"}
-                                        </td>
+                                        {["Date", "Category", "Description", "Amount", "Running Total", "Actions"].map(h => (
+                                            <th key={h} className="px-4 sm:px-8 py-5 text-left text-xs sm:text-sm font-semibold uppercase tracking-wider opacity-80">{h}</th>
+                                        ))}
                                     </tr>
-                                ) : (
-                                    filteredExpenses().map((exp) => {
-                                        const isEditing = editExpense === exp.id;
-                                        return (
-                                            <tr key={exp.id} className="hover:bg-gray-800/40 transition">
-                                                <td className="px-4 sm:px-8 py-5 text-sm sm:text-lg">
-                                                    {new Date(exp.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-                                                </td>
-                                                <td className="px-4 sm:px-8 py-5">
-                                                    {isEditing ? (
-                                                        <input type="text" className="bg-gray-700 rounded px-3 py-2 w-full sm:w-40 text-sm" value={editCategory} onChange={(e) => setEditCategory(e.target.value)} />
-                                                    ) : <span className="font-semibold">{exp.category}</span>}
-                                                </td>
-                                                <td className="px-4 sm:px-8 py-5 text-sm max-w-xs truncate">
-                                                    {isEditing ? (
-                                                        <input type="text" className="bg-gray-700 rounded px-3 py-2 w-full text-sm" value={editDescription} onChange={(e) => setEditDescription(e.target.value)} />
-                                                    ) : <span className="opacity-90">{exp.description || "-"}</span>}
-                                                </td>
-                                                <td className="px-4 sm:px-8 py-5 text-right font-bold text-lg sm:text-xl text-red-400">
-                                                    {isEditing ? (
-                                                        <input type="number" className="bg-gray-700 rounded px-3 py-2 w-24 sm:w-32 text-right text-sm" value={editAmount} onChange={(e) => setEditAmount(e.target.value)} />
-                                                    ) : `${exp.amount.toLocaleString()} Tk`}
-                                                </td>
-                                                <td className="px-4 sm:px-8 py-5 text-right font-bold text-lg sm:text-xl text-red-400">
-                                                    {exp.runningTotal.toLocaleString()} Tk
-                                                </td>
-                                                <td className="px-4 sm:px-8 py-5">
-                                                    <div className="flex flex-col sm:flex-row gap-2">
+                                </thead>
+                                <tbody className="divide-y divide-gray-800">
+                                    {filteredExpenses().length === 0 ? (
+                                        <tr>
+                                            <td colSpan={6} className="py-16 sm:py-20 text-center text-gray-500 text-lg sm:text-xl">
+                                                {filterDate ? "No expenses found for selected date" : "No expenses recorded yet"}
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        filteredExpenses().map((exp) => {
+                                            const isEditing = editExpense === exp.id;
+                                            return (
+                                                <tr key={exp.id} className="hover:bg-gray-800/40 transition">
+                                                    <td className="px-4 sm:px-8 py-5 text-sm sm:text-lg">
+                                                        {new Date(exp.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                                    </td>
+                                                    <td className="px-4 sm:px-8 py-5">
                                                         {isEditing ? (
-                                                            <button onClick={saveEditExpense} className="bg-emerald-600 hover:bg-emerald-700 px-4 py-2 rounded-xl text-sm font-semibold transition">
-                                                                Save
+                                                            <input type="text" className="bg-gray-700 rounded px-3 py-2 w-full sm:w-40 text-sm" value={editCategory} onChange={(e) => setEditCategory(e.target.value)} />
+                                                        ) : <span className="font-semibold">{exp.category}</span>}
+                                                    </td>
+                                                    <td className="px-4 sm:px-8 py-5 text-sm max-w-xs truncate">
+                                                        {isEditing ? (
+                                                            <input type="text" className="bg-gray-700 rounded px-3 py-2 w-full text-sm" value={editDescription} onChange={(e) => setEditDescription(e.target.value)} />
+                                                        ) : <span className="opacity-90">{exp.description || "-"}</span>}
+                                                    </td>
+                                                    <td className="px-4 sm:px-8 py-5 text-right font-bold text-lg sm:text-xl text-red-400">
+                                                        {isEditing ? (
+                                                            <input type="number" className="bg-gray-700 rounded px-3 py-2 w-24 sm:w-32 text-right text-sm" value={editAmount} onChange={(e) => setEditAmount(e.target.value)} />
+                                                        ) : `${exp.amount.toLocaleString()} Tk`}
+                                                    </td>
+                                                    <td className="px-4 sm:px-8 py-5 text-right font-bold text-lg sm:text-xl text-red-400">
+                                                        {exp.runningTotal.toLocaleString()} Tk
+                                                    </td>
+                                                    <td className="px-4 sm:px-8 py-5">
+                                                        <div className="flex flex-col sm:flex-row gap-2">
+                                                            {isEditing ? (
+                                                                <button onClick={saveEditExpense} className="bg-emerald-600 hover:bg-emerald-700 px-4 py-2 rounded-xl text-sm font-semibold transition">
+                                                                    Save
+                                                                </button>
+                                                            ) : (
+                                                                <button onClick={() => handleEditExpense(exp.id, exp)} className="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-xl text-sm font-medium transition">
+                                                                    Edit
+                                                                </button>
+                                                            )}
+                                                            <button onClick={() => deleteExpense(exp.id)} className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-xl text-sm font-semibold transition">
+                                                                Delete
                                                             </button>
-                                                        ) : (
-                                                            <button onClick={() => handleEditExpense(exp.id, exp)} className="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-xl text-sm font-medium transition">
-                                                                Edit
-                                                            </button>
-                                                        )}
-                                                        <button onClick={() => deleteExpense(exp.id)} className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-xl text-sm font-semibold transition">
-                                                            Delete
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        );
-                                    })
-                                )}
-                            </tbody>
-                        </table>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>

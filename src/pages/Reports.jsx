@@ -1,4 +1,4 @@
-// Reports.jsx - Updated with Enter Key Support + Full Mobile Responsiveness
+// Reports.jsx - Updated with Scrollable Member Payment Summary Table
 // All previous design, structure, and features preserved exactly
 // App: Independent Club
 import { useEffect, useState } from "react";
@@ -152,42 +152,65 @@ export default function Reports() {
 
                 {/* Main Reports Grid */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 mb-16">
-                    {/* Member Payment Summary */}
-                    <div className="bg-gray-900/70 backdrop-blur-xl border border-gray-800 rounded-3xl p-8 shadow-2xl">
+                    {/* Member Payment Summary - Now Scrollable with Visible Scrollbar */}
+                    <div className="bg-gray-900/70 backdrop-blur-xl border border-gray-800 rounded-3xl p-8 shadow-2xl flex flex-col">
                         <h3 className="text-3xl font-bold mb-8">Member Payment Summary</h3>
-                        <div className="overflow-x-auto">
-                            <table className="w-full min-w-[600px]">
-                                <thead className="bg-gray-800/50">
-                                    <tr>
-                                        <th className="px-6 py-5 text-left text-sm font-semibold uppercase tracking-wider opacity-80">Member</th>
-                                        <th className="px-6 py-5 text-right text-sm font-semibold uppercase tracking-wider opacity-80">Total Paid (Tk)</th>
-                                        <th className="px-6 py-5 text-right text-sm font-semibold uppercase tracking-wider opacity-80">Months Paid</th>
-                                        <th className="px-6 py-5 text-right text-sm font-semibold uppercase tracking-wider opacity-80">Transactions</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-800">
-                                    {memberSummary.length === 0 ? (
+                        <div className="flex-1 overflow-y-auto scrollbar-visible max-h-96">
+                            <style jsx>{`
+                                .scrollbar-visible::-webkit-scrollbar {
+                                    width: 10px;
+                                }
+                                .scrollbar-visible::-webkit-scrollbar-track {
+                                    background: #1e293b;
+                                    border-radius: 10px;
+                                }
+                                .scrollbar-visible::-webkit-scrollbar-thumb {
+                                    background: #4b5563;
+                                    border-radius: 10px;
+                                    border: 2px solid #1e293b;
+                                }
+                                .scrollbar-visible::-webkit-scrollbar-thumb:hover {
+                                    background: #6b7280;
+                                }
+                                .scrollbar-visible {
+                                    scrollbar-width: thin;
+                                    scrollbar-color: #4b5563 #1e293b;
+                                }
+                            `}</style>
+                            <div className="overflow-x-auto">
+                                <table className="w-full min-w-[600px]">
+                                    <thead className="bg-gray-800/50 sticky top-0">
                                         <tr>
-                                            <td colSpan={4} className="py-20 text-center text-gray-500 text-xl">No members yet</td>
+                                            <th className="px-6 py-5 text-left text-sm font-semibold uppercase tracking-wider opacity-80">Member</th>
+                                            <th className="px-6 py-5 text-right text-sm font-semibold uppercase tracking-wider opacity-80">Total Paid (Tk)</th>
+                                            <th className="px-6 py-5 text-right text-sm font-semibold uppercase tracking-wider opacity-80">Months Paid</th>
+                                            <th className="px-6 py-5 text-right text-sm font-semibold uppercase tracking-wider opacity-80">Transactions</th>
                                         </tr>
-                                    ) : (
-                                        memberSummary.map((m, i) => (
-                                            <tr key={i} className="hover:bg-gray-800/40 transition">
-                                                <td className="px-6 py-5 font-medium text-lg">{m.name}</td>
-                                                <td className="px-6 py-5 text-right font-bold text-xl text-emerald-400">{m.totalAmount.toLocaleString()}</td>
-                                                <td className="px-6 py-5 text-right text-lg">{m.totalMonths}</td>
-                                                <td className="px-6 py-5 text-right text-lg opacity-80">{m.count}</td>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-800">
+                                        {memberSummary.length === 0 ? (
+                                            <tr>
+                                                <td colSpan={4} className="py-20 text-center text-gray-500 text-xl">No members yet</td>
                                             </tr>
-                                        ))
-                                    )}
-                                    <tr className="font-bold bg-gray-800/50">
-                                        <td className="px-6 py-5 text-lg">Total Collected</td>
-                                        <td className="px-6 py-5 text-right text-2xl text-emerald-400">{totalCollected.toLocaleString()} Tk</td>
-                                        <td className="px-6 py-5 text-right">-</td>
-                                        <td className="px-6 py-5 text-right">-</td>
-                                    </tr>
-                                </tbody>
-                            </table>
+                                        ) : (
+                                            memberSummary.map((m, i) => (
+                                                <tr key={i} className="hover:bg-gray-800/40 transition">
+                                                    <td className="px-6 py-5 font-medium text-lg">{m.name}</td>
+                                                    <td className="px-6 py-5 text-right font-bold text-xl text-emerald-400">{m.totalAmount.toLocaleString()}</td>
+                                                    <td className="px-6 py-5 text-right text-lg">{m.totalMonths}</td>
+                                                    <td className="px-6 py-5 text-right text-lg opacity-80">{m.count}</td>
+                                                </tr>
+                                            ))
+                                        )}
+                                        <tr className="font-bold bg-gray-800/50">
+                                            <td className="px-6 py-5 text-lg">Total Collected</td>
+                                            <td className="px-6 py-5 text-right text-2xl text-emerald-400">{totalCollected.toLocaleString()} Tk</td>
+                                            <td className="px-6 py-5 text-right">-</td>
+                                            <td className="px-6 py-5 text-right">-</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
 

@@ -1,5 +1,4 @@
-// Dashboard.jsx - Fully Updated: Modern UI + Full Mobile Responsiveness + Enter Support Ready
-// Consistent with all other pages (Members, Expenses, Reports, etc.)
+// Dashboard.jsx - Updated: Proper scrolling for long Recent Payments & Expenses
 // App: Independent Club
 import { useEffect, useState } from "react";
 import { signOut } from "firebase/auth";
@@ -76,17 +75,38 @@ export default function Dashboard() {
             }))
         )
         .sort((a, b) => new Date(b.date) - new Date(a.date))
-        .slice(0, 8);
+        .slice(0, 20); // Increased limit a bit for more data visibility, but still controlled
 
     const recentExpenses = (expenses || [])
         .sort((a, b) => new Date(b.date) - new Date(a.date))
-        .slice(0, 8);
+        .slice(0, 20); // Same for expenses
 
     return (
         <div className={`min-h-screen ${darkMode ? 'bg-gray-950 text-white' : 'bg-gray-50 text-gray-900'} transition-all duration-700`}>
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 py-8 lg:py-16">
-                {/* Navigation - Mobile Responsive (Horizontal Scroll) */}
-                <div className="mb-12 overflow-x-auto pb-4 -mx-4 px-4">
+                {/* Navigation - Mobile Responsive (Horizontal Scroll with Visible Scrollbar) */}
+                <div className="mb-12 overflow-x-auto pb-4 -mx-4 px-4 scrollbar-visible">
+                    <style jsx>{`
+                        .scrollbar-visible::-webkit-scrollbar {
+                            height: 10px;
+                        }
+                        .scrollbar-visible::-webkit-scrollbar-track {
+                            background: #1e293b;
+                            border-radius: 10px;
+                        }
+                        .scrollbar-visible::-webkit-scrollbar-thumb {
+                            background: #4b5563;
+                            border-radius: 10px;
+                            border: 2px solid #1e293b;
+                        }
+                        .scrollbar-visible::-webkit-scrollbar-thumb:hover {
+                            background: #6b7280;
+                        }
+                        .scrollbar-visible {
+                            scrollbar-width: thin;
+                            scrollbar-color: #4b5563 #1e293b;
+                        }
+                    `}</style>
                     <div className="flex gap-4 justify-center min-w-max">
                         {[
                             { path: "/dashboard", label: "🏠 Dashboard", colors: "from-cyan-500 to-blue-600" },
@@ -154,57 +174,103 @@ export default function Dashboard() {
                     ))}
                 </div>
 
-                {/* Recent Activity - Responsive Grid */}
+                {/* Recent Activity - Responsive Grid with Fixed Height Scrollable Areas */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-10">
-                    {/* Recent Payments */}
-                    <div className="bg-gray-900/70 backdrop-blur-xl border border-gray-800 rounded-3xl p-6 sm:p-8 shadow-2xl">
-                        <h3 className="text-2xl sm:text-3xl font-bold mb-8">Recent Payments</h3>
-                        <div className="space-y-4">
-                            {recentPayments.length === 0 ? (
-                                <p className="text-center text-gray-500 py-12 text-lg">No payments recorded yet</p>
-                            ) : (
-                                recentPayments.map((p, i) => (
-                                    <div key={i} className="bg-gray-800/50 backdrop-blur border border-gray-700 rounded-2xl p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                                        <div>
-                                            <p className="font-semibold text-base sm:text-lg">{p.memberName}</p>
-                                            <p className="text-emerald-400 font-bold text-lg sm:text-xl">
-                                                {(p.totalAmount || p.amount).toLocaleString()} Tk
-                                                <span className="text-sm opacity-80 ml-2">
-                                                    ({p.numMonths || 1} {p.numMonths > 1 ? 'months' : 'month'})
-                                                </span>
+                    {/* Recent Payments - Scrollable with fixed max height */}
+                    <div className="bg-gray-900/70 backdrop-blur-xl border border-gray-800 rounded-3xl p-6 sm:p-8 shadow-2xl flex flex-col">
+                        <h3 className="text-2xl sm:text-3xl font-bold mb-6">Recent Payments</h3>
+                        <div className="flex-1 overflow-y-auto scrollbar-visible max-h-96">
+                            <style jsx>{`
+                                .scrollbar-visible::-webkit-scrollbar {
+                                    width: 10px;
+                                }
+                                .scrollbar-visible::-webkit-scrollbar-track {
+                                    background: #1e293b;
+                                    border-radius: 10px;
+                                }
+                                .scrollbar-visible::-webkit-scrollbar-thumb {
+                                    background: #4b5563;
+                                    border-radius: 10px;
+                                    border: 2px solid #1e293b;
+                                }
+                                .scrollbar-visible::-webkit-scrollbar-thumb:hover {
+                                    background: #6b7280;
+                                }
+                                .scrollbar-visible {
+                                    scrollbar-width: thin;
+                                    scrollbar-color: #4b5563 #1e293b;
+                                }
+                            `}</style>
+                            <div className="space-y-4 pb-2">
+                                {recentPayments.length === 0 ? (
+                                    <p className="text-center text-gray-500 py-12 text-lg">No payments recorded yet</p>
+                                ) : (
+                                    recentPayments.map((p, i) => (
+                                        <div key={i} className="bg-gray-800/50 backdrop-blur border border-gray-700 rounded-2xl p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                                            <div>
+                                                <p className="font-semibold text-base sm:text-lg">{p.memberName}</p>
+                                                <p className="text-emerald-400 font-bold text-lg sm:text-xl">
+                                                    {(p.totalAmount || p.amount).toLocaleString()} Tk
+                                                    <span className="text-sm opacity-80 ml-2">
+                                                        ({p.numMonths || 1} {p.numMonths > 1 ? 'months' : 'month'})
+                                                    </span>
+                                                </p>
+                                            </div>
+                                            <p className="text-sm opacity-70">
+                                                {new Date(p.date).toLocaleDateString('en-GB')}
                                             </p>
                                         </div>
-                                        <p className="text-sm opacity-70">
-                                            {new Date(p.date).toLocaleDateString('en-GB')}
-                                        </p>
-                                    </div>
-                                ))
-                            )}
+                                    ))
+                                )}
+                            </div>
                         </div>
                     </div>
 
-                    {/* Recent Expenses */}
-                    <div className="bg-gray-900/70 backdrop-blur-xl border border-gray-800 rounded-3xl p-6 sm:p-8 shadow-2xl">
-                        <h3 className="text-2xl sm:text-3xl font-bold mb-8">Recent Expenses</h3>
-                        <div className="space-y-4">
-                            {recentExpenses.length === 0 ? (
-                                <p className="text-center text-gray-500 py-12 text-lg">No expenses recorded yet</p>
-                            ) : (
-                                recentExpenses.map((exp, i) => (
-                                    <div key={i} className="bg-gray-800/50 backdrop-blur border border-gray-700 rounded-2xl p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                                        <div>
-                                            <p className="font-semibold text-base sm:text-lg">{exp.category}</p>
-                                            <p className="text-red-400 font-bold text-lg sm:text-xl">
-                                                {exp.amount.toLocaleString()} Tk
-                                                {exp.description && <span className="text-sm opacity-80 ml-2">{exp.description}</span>}
+                    {/* Recent Expenses - Scrollable with fixed max height */}
+                    <div className="bg-gray-900/70 backdrop-blur-xl border border-gray-800 rounded-3xl p-6 sm:p-8 shadow-2xl flex flex-col">
+                        <h3 className="text-2xl sm:text-3xl font-bold mb-6">Recent Expenses</h3>
+                        <div className="flex-1 overflow-y-auto scrollbar-visible max-h-96">
+                            <style jsx>{`
+                                .scrollbar-visible::-webkit-scrollbar {
+                                    width: 10px;
+                                }
+                                .scrollbar-visible::-webkit-scrollbar-track {
+                                    background: #1e293b;
+                                    border-radius: 10px;
+                                }
+                                .scrollbar-visible::-webkit-scrollbar-thumb {
+                                    background: #4b5563;
+                                    border-radius: 10px;
+                                    border: 2px solid #1e293b;
+                                }
+                                .scrollbar-visible::-webkit-scrollbar-thumb:hover {
+                                    background: #6b7280;
+                                }
+                                .scrollbar-visible {
+                                    scrollbar-width: thin;
+                                    scrollbar-color: #4b5563 #1e293b;
+                                }
+                            `}</style>
+                            <div className="space-y-4 pb-2">
+                                {recentExpenses.length === 0 ? (
+                                    <p className="text-center text-gray-500 py-12 text-lg">No expenses recorded yet</p>
+                                ) : (
+                                    recentExpenses.map((exp, i) => (
+                                        <div key={i} className="bg-gray-800/50 backdrop-blur border border-gray-700 rounded-2xl p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                                            <div>
+                                                <p className="font-semibold text-base sm:text-lg">{exp.category}</p>
+                                                <p className="text-red-400 font-bold text-lg sm:text-xl">
+                                                    {exp.amount.toLocaleString()} Tk
+                                                    {exp.description && <span className="text-sm opacity-80 ml-2">{exp.description}</span>}
+                                                </p>
+                                            </div>
+                                            <p className="text-sm opacity-70">
+                                                {new Date(exp.date).toLocaleDateString('en-GB')}
                                             </p>
                                         </div>
-                                        <p className="text-sm opacity-70">
-                                            {new Date(exp.date).toLocaleDateString('en-GB')}
-                                        </p>
-                                    </div>
-                                ))
-                            )}
+                                    ))
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>

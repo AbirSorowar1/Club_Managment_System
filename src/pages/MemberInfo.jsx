@@ -1,6 +1,5 @@
-// MemberInfo.jsx - Updated with Year Selector + CSV Download
+// MemberInfo.jsx - Updated with Year Selector + CSV Download + Scrollable Monthly Table (First 10 Visible)
 // All previous design, logic, and features preserved exactly
-// Added: Year dropdown selector + Download Monthly Report as CSV
 import { useEffect, useState } from "react";
 import { signOut } from "firebase/auth";
 import { auth, db } from "../firebase";
@@ -226,46 +225,69 @@ export default function MemberInfo() {
                     </div>
                 </div>
 
-                {/* Monthly Table */}
-                <div className="bg-gray-900/70 backdrop-blur-xl border border-gray-800 rounded-3xl overflow-hidden shadow-2xl">
-                    <div className="overflow-x-auto">
-                        <table className="w-full min-w-[1200px]">
-                            <thead className="bg-gray-800/50">
-                                <tr>
-                                    <th className="px-6 py-6 text-left text-sm font-semibold uppercase tracking-wider opacity-80">Name</th>
-                                    {monthNames.map((month) => (
-                                        <th key={month} className="px-6 py-6 text-center text-sm font-semibold uppercase tracking-wider opacity-80">{month}</th>
-                                    ))}
-                                    <th className="px-6 py-6 text-left text-sm font-semibold uppercase tracking-wider opacity-80">Total (Tk)</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-800">
-                                {filteredMembers().length === 0 ? (
+                {/* Monthly Table - Scrollable after first ~10 rows */}
+                <div className="bg-gray-900/70 backdrop-blur-xl border border-gray-800 rounded-3xl shadow-2xl flex flex-col">
+                    <div className="flex-1 overflow-y-auto scrollbar-visible max-h-96">
+                        <style jsx>{`
+                            .scrollbar-visible::-webkit-scrollbar {
+                                width: 10px;
+                            }
+                            .scrollbar-visible::-webkit-scrollbar-track {
+                                background: #1e293b;
+                                border-radius: 10px;
+                            }
+                            .scrollbar-visible::-webkit-scrollbar-thumb {
+                                background: #4b5563;
+                                border-radius: 10px;
+                                border: 2px solid #1e293b;
+                            }
+                            .scrollbar-visible::-webkit-scrollbar-thumb:hover {
+                                background: #6b7280;
+                            }
+                            .scrollbar-visible {
+                                scrollbar-width: thin;
+                                scrollbar-color: #4b5563 #1e293b;
+                            }
+                        `}</style>
+                        <div className="overflow-x-auto">
+                            <table className="w-full min-w-[1200px]">
+                                <thead className="bg-gray-800/50 sticky top-0">
                                     <tr>
-                                        <td colSpan={monthNames.length + 2} className="py-20 text-center text-gray-500 text-xl">
-                                            {filterSearch ? 'No members found' : 'No members yet'}
-                                        </td>
+                                        <th className="px-6 py-6 text-left text-sm font-semibold uppercase tracking-wider opacity-80">Name</th>
+                                        {monthNames.map((month) => (
+                                            <th key={month} className="px-6 py-6 text-center text-sm font-semibold uppercase tracking-wider opacity-80">{month}</th>
+                                        ))}
+                                        <th className="px-6 py-6 text-left text-sm font-semibold uppercase tracking-wider opacity-80">Total (Tk)</th>
                                     </tr>
-                                ) : (
-                                    filteredMembers().map((key) => {
-                                        const mem = members[key];
-                                        const monthly = getMonthlyTotals(mem.payments, selectedYear);
-                                        const total = monthly.reduce((a, b) => a + b, 0);
-                                        return (
-                                            <tr key={key} className="hover:bg-gray-800/40 transition">
-                                                <td className="px-6 py-6 font-semibold text-lg">{mem.name}</td>
-                                                {monthly.map((amt, idx) => (
-                                                    <td key={idx} className="px-6 py-6 text-center font-bold text-xl text-emerald-400">
-                                                        {amt > 0 ? `${amt.toFixed(0)} Tk` : '-'}
-                                                    </td>
-                                                ))}
-                                                <td className="px-6 py-6 font-bold text-2xl text-emerald-400">{total.toFixed(0)} Tk</td>
-                                            </tr>
-                                        );
-                                    })
-                                )}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody className="divide-y divide-gray-800">
+                                    {filteredMembers().length === 0 ? (
+                                        <tr>
+                                            <td colSpan={monthNames.length + 2} className="py-20 text-center text-gray-500 text-xl">
+                                                {filterSearch ? 'No members found' : 'No members yet'}
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        filteredMembers().map((key) => {
+                                            const mem = members[key];
+                                            const monthly = getMonthlyTotals(mem.payments, selectedYear);
+                                            const total = monthly.reduce((a, b) => a + b, 0);
+                                            return (
+                                                <tr key={key} className="hover:bg-gray-800/40 transition">
+                                                    <td className="px-6 py-6 font-semibold text-lg">{mem.name}</td>
+                                                    {monthly.map((amt, idx) => (
+                                                        <td key={idx} className="px-6 py-6 text-center font-bold text-xl text-emerald-400">
+                                                            {amt > 0 ? `${amt.toFixed(0)} Tk` : '-'}
+                                                        </td>
+                                                    ))}
+                                                    <td className="px-6 py-6 font-bold text-2xl text-emerald-400">{total.toFixed(0)} Tk</td>
+                                                </tr>
+                                            );
+                                        })
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
