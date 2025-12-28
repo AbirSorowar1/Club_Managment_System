@@ -1,5 +1,6 @@
-// MemberInfo.jsx - Updated with Year Selector + CSV Download + Scrollable Monthly Table (First 10 Visible)
-// All previous design, logic, and features preserved exactly
+// MemberInfo.jsx - Updated with "Extra" Column in Table + CSV Support
+// Shows extra amount paid only in the selected year
+
 import { useEffect, useState } from "react";
 import { signOut } from "firebase/auth";
 import { auth, db } from "../firebase";
@@ -38,43 +39,55 @@ export default function MemberInfo() {
 
     const handleLogout = () => { signOut(auth).then(() => navigate("/login")) };
 
-    const calculateTotals = (payts) => {
-        let totalAmount = 0;
-        let totalMonths = 0;
-        if (!payts) return { totalAmount: 0, totalMonths: 0 };
-        Object.values(payts).forEach((p) => {
-            totalAmount += Number(p.totalAmount || p.amount || 0);
-            totalMonths += Number(p.numMonths || 0);
-        });
-        return { totalAmount, totalMonths };
-    };
-
-    const totalCollectedAll = () => {
-        let total = 0;
-        Object.values(members).forEach(mem => total += calculateTotals(mem.payments).totalAmount);
-        return total;
-    };
-
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-    const getMonthlyTotals = (payments, year) => {
+    // Calculate monthly base amounts (200 Tk per covered month in the year)
+    const getMonthlyBaseTotals = (payments, year) => {
         const monthly = Array(12).fill(0);
         if (!payments) return monthly;
+
         Object.values(payments).forEach(p => {
+            const basePerMonth = Number(p.amountPerMonth || 200); // fallback to 200 if old data
             const numMonths = Number(p.numMonths || 0);
             if (numMonths <= 0) return;
-            const perMonth = Number(p.amountPerMonth || (p.amount / numMonths) || 0);
+
             const startDate = new Date(`${p.startMonth}-01`);
             for (let i = 0; i < numMonths; i++) {
                 const monthDate = new Date(startDate);
                 monthDate.setMonth(startDate.getMonth() + i);
                 if (monthDate.getFullYear() === year) {
                     const monthIdx = monthDate.getMonth();
-                    monthly[monthIdx] += perMonth;
+                    monthly[monthIdx] += basePerMonth;
                 }
             }
         });
         return monthly;
+    };
+
+    // Calculate total extra amount paid in the selected year
+    const getYearlyExtraTotal = (payments, year) => {
+        if (!payments) return 0;
+        let extraTotal = 0;
+
+        Object.values(payments).forEach(p => {
+            const paymentDate = new Date(p.date);
+            if (paymentDate.getFullYear() === year) {
+                const extra = Number(p.extraAmount || 0);
+                extraTotal += extra;
+            }
+        });
+
+        return extraTotal;
+    };
+
+    // Total base + extra collected in selected year (for stats card)
+    const getYearlyTotalCollected = () => {
+        return Object.values(members).reduce((sum, mem) => {
+            const monthlyBase = getMonthlyBaseTotals(mem.payments, selectedYear);
+            const baseTotal = monthlyBase.reduce((a, b) => a + b, 0);
+            const extraTotal = getYearlyExtraTotal(mem.payments, selectedYear);
+            return sum + baseTotal + extraTotal;
+        }, 0);
     };
 
     const filteredMembers = () => {
@@ -86,17 +99,21 @@ export default function MemberInfo() {
 
     const isActive = (path) => location.pathname === path;
 
-    // CSV Download Function
+    // CSV Download with Extra column
     const downloadCSV = () => {
-        let csv = "Member Name," + monthNames.join(",") + ",Total (Tk)\n";
+        let csv = "Member Name," + monthNames.join(",") + ",Extra (Tk),Total (Tk)\n";
         const sortedKeys = filteredMembers();
         sortedKeys.forEach(key => {
             const mem = members[key];
-            const monthly = getMonthlyTotals(mem.payments, selectedYear);
-            const total = monthly.reduce((a, b) => a + b, 0);
+            const monthly = getMonthlyBaseTotals(mem.payments, selectedYear);
+            const extra = getYearlyExtraTotal(mem.payments, selectedYear);
+            const baseTotal = monthly.reduce((a, b) => a + b, 0);
+            const total = baseTotal + extra;
+
             const row = [
                 mem.name,
                 ...monthly.map(amt => amt > 0 ? amt.toFixed(0) : ""),
+                extra > 0 ? extra.toFixed(0) : "",
                 total.toFixed(0)
             ];
             csv += row.join(",") + "\n";
@@ -112,7 +129,7 @@ export default function MemberInfo() {
         document.body.removeChild(link);
     };
 
-    // Generate year options (last 5 years + next 2 years)
+    // Generate year options
     const currentYear = new Date().getFullYear();
     const yearOptions = [];
     for (let y = currentYear - 5; y <= currentYear + 2; y++) {
@@ -122,7 +139,7 @@ export default function MemberInfo() {
     return (
         <div className={`min-h-screen ${darkMode ? 'bg-gray-950 text-white' : 'bg-gray-50 text-gray-900'} transition-all duration-700`}>
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 py-8 lg:py-16">
-                {/* Navigation - Mobile Responsive */}
+                {/* Navigation */}
                 <div className="mb-12 overflow-x-auto pb-4 -mx-4 px-4">
                     <div className="flex gap-4 justify-center min-w-max">
                         {[
@@ -148,7 +165,7 @@ export default function MemberInfo() {
                     </div>
                 </div>
 
-                {/* Header - Responsive */}
+                {/* Header */}
                 <div className="flex flex-col sm:flex-row justify-between items-start gap-6 mb-12">
                     <div>
                         <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight">
@@ -159,7 +176,10 @@ export default function MemberInfo() {
                         </p>
                         <p className="text-xl sm:text-2xl mt-4 opacity-80">
                             Total Collected (All Time): <span className="text-3xl sm:text-4xl font-bold text-emerald-400">
-                                {totalCollectedAll().toLocaleString()} Tk
+                                {Object.values(members).reduce((sum, mem) => {
+                                    if (!mem.payments) return sum;
+                                    return sum + Object.values(mem.payments).reduce((t, p) => t + Number(p.totalAmount || 0), 0);
+                                }, 0).toLocaleString()} Tk
                             </span>
                         </p>
                     </div>
@@ -182,19 +202,22 @@ export default function MemberInfo() {
                     <div className="bg-gray-900/60 backdrop-blur-xl border border-gray-800 rounded-3xl p-8 text-center shadow-2xl">
                         <p className="text-lg opacity-70 mb-3">Active in {selectedYear}</p>
                         <p className="text-5xl font-extrabold">
-                            {Object.keys(members).filter(key => getMonthlyTotals(members[key].payments, selectedYear).some(amt => amt > 0)).length}
+                            {Object.keys(members).filter(key => {
+                                const monthly = getMonthlyBaseTotals(members[key].payments, selectedYear);
+                                const extra = getYearlyExtraTotal(members[key].payments, selectedYear);
+                                return monthly.some(amt => amt > 0) || extra > 0;
+                            }).length}
                         </p>
                     </div>
                     <div className="bg-gray-900/60 backdrop-blur-xl border border-gray-800 rounded-3xl p-8 text-center shadow-2xl">
                         <p className="text-lg opacity-70 mb-3">Collected in {selectedYear}</p>
                         <p className="text-5xl font-extrabold text-emerald-400">
-                            {Object.values(members).reduce((sum, mem) =>
-                                sum + getMonthlyTotals(mem.payments, selectedYear).reduce((a, b) => a + b, 0), 0).toLocaleString()} Tk
+                            {getYearlyTotalCollected().toLocaleString()} Tk
                         </p>
                     </div>
                 </div>
 
-                {/* Controls: Year Selector + Search + Download */}
+                {/* Controls */}
                 <div className="bg-gray-900/80 backdrop-blur-xl border border-gray-800 rounded-3xl p-6 sm:p-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-10 shadow-2xl">
                     <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
                         <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Monthly Payment Coverage - {selectedYear}</h2>
@@ -225,7 +248,7 @@ export default function MemberInfo() {
                     </div>
                 </div>
 
-                {/* Monthly Table - Scrollable after first ~10 rows */}
+                {/* Monthly Table with Extra Column */}
                 <div className="bg-gray-900/70 backdrop-blur-xl border border-gray-800 rounded-3xl shadow-2xl flex flex-col">
                     <div className="flex-1 overflow-y-auto scrollbar-visible max-h-96">
                         <style jsx>{`
@@ -250,28 +273,32 @@ export default function MemberInfo() {
                             }
                         `}</style>
                         <div className="overflow-x-auto">
-                            <table className="w-full min-w-[1200px]">
+                            <table className="w-full min-w-[1400px]">
                                 <thead className="bg-gray-800/50 sticky top-0">
                                     <tr>
                                         <th className="px-6 py-6 text-left text-sm font-semibold uppercase tracking-wider opacity-80">Name</th>
                                         {monthNames.map((month) => (
                                             <th key={month} className="px-6 py-6 text-center text-sm font-semibold uppercase tracking-wider opacity-80">{month}</th>
                                         ))}
+                                        <th className="px-6 py-6 text-center text-sm font-semibold uppercase tracking-wider opacity-80 text-yellow-400">Extra</th>
                                         <th className="px-6 py-6 text-left text-sm font-semibold uppercase tracking-wider opacity-80">Total (Tk)</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-800">
                                     {filteredMembers().length === 0 ? (
                                         <tr>
-                                            <td colSpan={monthNames.length + 2} className="py-20 text-center text-gray-500 text-xl">
+                                            <td colSpan={monthNames.length + 3} className="py-20 text-center text-gray-500 text-xl">
                                                 {filterSearch ? 'No members found' : 'No members yet'}
                                             </td>
                                         </tr>
                                     ) : (
                                         filteredMembers().map((key) => {
                                             const mem = members[key];
-                                            const monthly = getMonthlyTotals(mem.payments, selectedYear);
-                                            const total = monthly.reduce((a, b) => a + b, 0);
+                                            const monthly = getMonthlyBaseTotals(mem.payments, selectedYear);
+                                            const extra = getYearlyExtraTotal(mem.payments, selectedYear);
+                                            const baseTotal = monthly.reduce((a, b) => a + b, 0);
+                                            const total = baseTotal + extra;
+
                                             return (
                                                 <tr key={key} className="hover:bg-gray-800/40 transition">
                                                     <td className="px-6 py-6 font-semibold text-lg">{mem.name}</td>
@@ -280,6 +307,9 @@ export default function MemberInfo() {
                                                             {amt > 0 ? `${amt.toFixed(0)} Tk` : '-'}
                                                         </td>
                                                     ))}
+                                                    <td className="px-6 py-6 text-center font-bold text-xl text-yellow-300">
+                                                        {extra > 0 ? `${extra.toFixed(0)} Tk` : '-'}
+                                                    </td>
                                                     <td className="px-6 py-6 font-bold text-2xl text-emerald-400">{total.toFixed(0)} Tk</td>
                                                 </tr>
                                             );

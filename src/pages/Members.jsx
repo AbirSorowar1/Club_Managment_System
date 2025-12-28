@@ -1,6 +1,5 @@
-// Members.jsx - Fully Updated & Fixed (December 2025)
-// All features preserved + Create Member stable + No page jump/error
-// Mobile responsive + Modern UI + Enter key support + Visible Scrollbar in Members List (Fixed Height)
+// Members.jsx - Updated (December 2025)
+// Amount fixed to 200 Tk + Optional Extra Amount field added + Monthly Fee Toggle
 
 import { useEffect, useState, useRef } from "react";
 import { signOut } from "firebase/auth";
@@ -19,27 +18,28 @@ export default function Members() {
     const [memberName, setMemberName] = useState("");
     const [memberPhone, setMemberPhone] = useState("");
     const [searchMember, setSearchMember] = useState("");
-    const [amount, setAmount] = useState("");
     const [startMonth, setStartMonth] = useState("");
     const [numMonths, setNumMonths] = useState("");
+    const [extraAmount, setExtraAmount] = useState(""); // New: Optional extra amount
     const [filterDate, setFilterDate] = useState("");
     const [transactionDone, setTransactionDone] = useState(false);
     const [editPayment, setEditPayment] = useState(null);
-    const [editAmount, setEditAmount] = useState("");
     const [editStartMonth, setEditStartMonth] = useState("");
     const [editNumMonths, setEditNumMonths] = useState("");
+    const [editExtraAmount, setEditExtraAmount] = useState(""); // For editing
     const [darkMode, setDarkMode] = useState(true);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [memberToDelete, setMemberToDelete] = useState(null);
     const [showQR, setShowQR] = useState(false);
     const [voiceListening, setVoiceListening] = useState(false);
+    const [includeMonthlyFee, setIncludeMonthlyFee] = useState(true); // Toggle for monthly fee
 
     // Refs for focus & Enter navigation
     const nameInputRef = useRef(null);
     const phoneInputRef = useRef(null);
-    const amountInputRef = useRef(null);
     const startMonthInputRef = useRef(null);
     const numMonthsInputRef = useRef(null);
+    const extraAmountInputRef = useRef(null);
 
     useEffect(() => {
         if (!user) {
@@ -66,7 +66,7 @@ export default function Members() {
 
     useEffect(() => {
         if (selectedMember) {
-            amountInputRef.current?.focus();
+            startMonthInputRef.current?.focus();
         }
     }, [selectedMember]);
 
@@ -81,7 +81,7 @@ export default function Members() {
         recognition.onstart = () => setVoiceListening(true);
         recognition.onresult = (e) => {
             const numbers = e.results[0][0].transcript.match(/\d+/g);
-            if (numbers) setAmount(numbers.join(""));
+            if (numbers) setExtraAmount(numbers.join(""));
             setVoiceListening(false);
         };
         recognition.onerror = recognition.onend = () => setVoiceListening(false);
@@ -96,12 +96,12 @@ export default function Members() {
         setTransactionDone(false);
         setEditPayment(null);
         setShowQR(false);
-        setAmount("");
         setStartMonth("");
         setNumMonths("");
+        setExtraAmount("");
+        setIncludeMonthlyFee(true); // Reset to include monthly fee
     };
 
-    // 🔥 FIXED & IMPROVED: Create Member – Safe, Stable, Auto Select
     const handleCreateMember = async () => {
         if (!memberName.trim() || !memberPhone.trim()) {
             alert("Please enter both name and phone number!");
@@ -123,17 +123,12 @@ export default function Members() {
                 payments: {}
             });
 
-            // Clear inputs
             setMemberName("");
             setMemberPhone("");
 
-            // Focus back to name input
             setTimeout(() => {
                 nameInputRef.current?.focus();
             }, 100);
-
-            // Auto select the new member once Firebase syncs (will happen automatically via onValue)
-            // No forced select here to avoid race condition
 
         } catch (error) {
             console.error("Error creating member:", error);
@@ -142,25 +137,34 @@ export default function Members() {
     };
 
     const handleAddPayment = async () => {
-        if (!amount || !startMonth || !numMonths || Number(amount) <= 0 || Number(numMonths) <= 0) {
-            alert("Please enter valid amount, start month, and number of months!");
+        if (!startMonth || !numMonths || Number(numMonths) <= 0) {
+            alert("Please select start month and number of months!");
             return;
         }
-        const amountPerMonth = Number(amount);
-        const totalForPayment = amountPerMonth * Number(numMonths);
+
+        const baseAmountPerMonth = includeMonthlyFee ? 200 : 0;
+        const extra = Number(extraAmount) || 0;
+        const totalBase = baseAmountPerMonth * Number(numMonths);
+        const totalAmount = totalBase + extra;
+
         const payRef = ref(db, `owners/${user.uid}/members/${selectedMember.key}/payments`);
         const newPay = push(payRef);
         await set(newPay, {
-            amountPerMonth,
-            totalAmount: totalForPayment,
+            amountPerMonth: baseAmountPerMonth,
+            extraAmount: extra,
+            totalAmount,
             startMonth,
             numMonths: Number(numMonths),
             date: new Date().toISOString()
         });
-        setAmount(""); setStartMonth(""); setNumMonths("");
+
+        setStartMonth("");
+        setNumMonths("");
+        setExtraAmount("");
+        setIncludeMonthlyFee(true); // Reset to default
         setTransactionDone(true);
         setTimeout(() => {
-            amountInputRef.current?.focus();
+            startMonthInputRef.current?.focus();
             setTransactionDone(false);
         }, 800);
     };
@@ -168,25 +172,30 @@ export default function Members() {
     // Enter key handlers
     const handleNameKeyDown = (e) => e.key === "Enter" && phoneInputRef.current?.focus();
     const handlePhoneKeyDown = (e) => e.key === "Enter" && handleCreateMember();
-    const handleAmountKeyDown = (e) => e.key === "Enter" && startMonthInputRef.current?.focus();
     const handleStartMonthKeyDown = (e) => e.key === "Enter" && numMonthsInputRef.current?.focus();
-    const handleNumMonthsKeyDown = (e) => e.key === "Enter" && handleAddPayment();
+    const handleNumMonthsKeyDown = (e) => e.key === "Enter" && extraAmountInputRef.current?.focus();
+    const handleExtraAmountKeyDown = (e) => e.key === "Enter" && handleAddPayment();
 
     const handleEditPayment = (key, pay) => {
         setEditPayment(key);
-        setEditAmount(pay.amountPerMonth || pay.amount);
         setEditStartMonth(pay.startMonth);
         setEditNumMonths(pay.numMonths);
+        setEditExtraAmount(pay.extraAmount || 0);
     };
 
     const saveEditPayment = async () => {
         if (!editPayment || !selectedMember) return;
-        const amountPerMonth = Number(editAmount);
-        const totalForPayment = amountPerMonth * Number(editNumMonths);
+
+        const baseAmountPerMonth = 200;
+        const extra = Number(editExtraAmount) || 0;
+        const totalBase = baseAmountPerMonth * Number(editNumMonths);
+        const totalAmount = totalBase + extra;
+
         const payRef = ref(db, `owners/${user.uid}/members/${selectedMember.key}/payments/${editPayment}`);
         await update(payRef, {
-            amountPerMonth,
-            totalAmount: totalForPayment,
+            amountPerMonth: baseAmountPerMonth,
+            extraAmount: extra,
+            totalAmount,
             startMonth: editStartMonth,
             numMonths: Number(editNumMonths)
         });
@@ -221,7 +230,7 @@ export default function Members() {
         let totalMonths = 0;
         if (!payts) return { totalAmount: 0, totalMonths: 0 };
         Object.values(payts).forEach((p) => {
-            totalAmount += Number(p.totalAmount || (p.amountPerMonth * p.numMonths) || (p.amount * p.numMonths));
+            totalAmount += Number(p.totalAmount);
             totalMonths += Number(p.numMonths);
         });
         return { totalAmount, totalMonths };
@@ -260,7 +269,7 @@ export default function Members() {
         let runningAmount = 0;
         let runningMonths = 0;
         return pays.map(p => {
-            runningAmount += Number(p.totalAmount || (p.amountPerMonth * p.numMonths));
+            runningAmount += Number(p.totalAmount);
             runningMonths += Number(p.numMonths);
             return { ...p, runningAmount, runningMonths };
         });
@@ -281,10 +290,10 @@ export default function Members() {
     const exportToCSV = () => {
         if (!selectedMember) return;
         const pays = getRunningTotals();
-        let csv = "Date,Amount Per Month,Total Paid,Start Month,Num Months,Covered Months,Running Total,Running Months\n";
+        let csv = "Date,Base Amt/Mo,Extra,Total Paid,Start Month,Num Months,Covered Months,Running Total,Running Months\n";
         pays.forEach(p => {
             const covered = getMonthRangeDisplay(p.startMonth, p.numMonths);
-            csv += `${new Date(p.date).toLocaleString()},${p.amountPerMonth || p.amount},${p.totalAmount},"${p.startMonth}",${p.numMonths},"${covered}",${p.runningAmount},${p.runningMonths}\n`;
+            csv += `${new Date(p.date).toLocaleString()},${p.amountPerMonth || 0},${p.extraAmount || 0},${p.totalAmount},"${p.startMonth}",${p.numMonths},"${covered}",${p.runningAmount},${p.runningMonths}\n`;
         });
         const blob = new Blob([csv], { type: 'text/csv' });
         const url = window.URL.createObjectURL(blob);
@@ -311,14 +320,16 @@ export default function Members() {
 
     const isActive = (path) => location.pathname === path;
 
-    const getCurrentCoveredDisplay = () => {
-        if (!amount || !startMonth || !numMonths) return null;
-        return getMonthRangeDisplay(startMonth, numMonths);
+    const getCurrentTotal = () => {
+        if (!numMonths) return 0;
+        const base = includeMonthlyFee ? (200 * Number(numMonths)) : 0;
+        const extra = Number(extraAmount) || 0;
+        return base + extra;
     };
 
-    const getCurrentTotal = () => {
-        if (!amount || !numMonths) return 0;
-        return Number(amount) * Number(numMonths);
+    const getCurrentCoveredDisplay = () => {
+        if (!startMonth || !numMonths) return null;
+        return getMonthRangeDisplay(startMonth, numMonths);
     };
 
     const renderNumMonthsOptions = () => {
@@ -535,23 +546,21 @@ export default function Members() {
 
                                     {/* Payment Input */}
                                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-8">
-                                        <div className="relative">
-                                            <input
-                                                ref={amountInputRef}
-                                                type="number"
-                                                placeholder="Amount/Month (Tk)"
-                                                className="w-full bg-gray-800/70 border border-gray-700 rounded-2xl px-6 py-6 text-2xl sm:text-3xl text-center font-bold focus:outline-none focus:border-emerald-500 transition"
-                                                value={amount}
-                                                onChange={(e) => setAmount(e.target.value)}
-                                                onKeyDown={handleAmountKeyDown}
-                                            />
-                                            <button
-                                                onClick={startVoiceInput}
-                                                className={`absolute right-4 top-1/2 -translate-y-1/2 text-2xl sm:text-3xl ${voiceListening ? 'animate-pulse text-emerald-400' : ''}`}
-                                            >
-                                                {voiceListening ? '🎙️' : '🎤'}
-                                            </button>
-                                        </div>
+                                        {/* Monthly Fee Toggle Button */}
+                                        <button
+                                            onClick={() => setIncludeMonthlyFee(!includeMonthlyFee)}
+                                            className={`relative border rounded-2xl px-6 py-6 text-center transition-all duration-300 ${includeMonthlyFee
+                                                    ? 'bg-emerald-800/70 border-emerald-500 ring-2 ring-emerald-500/30'
+                                                    : 'bg-gray-800/70 border-gray-700 opacity-50'
+                                                }`}
+                                        >
+                                            <p className="text-lg opacity-70 mb-1">Monthly Fee {includeMonthlyFee ? '(Included)' : '(Excluded)'}</p>
+                                            <p className={`text-3xl sm:text-4xl font-bold ${includeMonthlyFee ? 'text-emerald-400' : 'text-gray-500 line-through'}`}>
+                                                200 Tk
+                                            </p>
+                                            <p className="text-xs mt-2 opacity-60">{includeMonthlyFee ? 'Click to exclude' : 'Click to include'}</p>
+                                        </button>
+
                                         <input
                                             ref={startMonthInputRef}
                                             type="month"
@@ -560,6 +569,7 @@ export default function Members() {
                                             onChange={(e) => setStartMonth(e.target.value)}
                                             onKeyDown={handleStartMonthKeyDown}
                                         />
+
                                         <select
                                             ref={numMonthsInputRef}
                                             className="bg-gray-800/70 border border-gray-700 rounded-2xl px-6 py-6 text-xl text-center focus:outline-none focus:border-emerald-500 transition"
@@ -572,10 +582,33 @@ export default function Members() {
                                         </select>
                                     </div>
 
-                                    {amount && startMonth && numMonths && (
+                                    {/* Optional Extra Amount */}
+                                    <div className="mb-8">
+                                        <div className="relative">
+                                            <input
+                                                ref={extraAmountInputRef}
+                                                type="number"
+                                                placeholder="Additional Extra Amount (Optional)"
+                                                className="w-full bg-gray-800/70 border border-gray-700 rounded-2xl px-6 py-6 text-2xl text-center font-bold focus:outline-none focus:border-emerald-500 transition"
+                                                value={extraAmount}
+                                                onChange={(e) => setExtraAmount(e.target.value)}
+                                                onKeyDown={handleExtraAmountKeyDown}
+                                            />
+                                            <button
+                                                onClick={startVoiceInput}
+                                                className={`absolute right-4 top-1/2 -translate-y-1/2 text-2xl sm:text-3xl ${voiceListening ? 'animate-pulse text-emerald-400' : ''}`}
+                                            >
+                                                {voiceListening ? '🎙️' : '🎤'}
+                                            </button>
+                                        </div>
+                                        <p className="text-center mt-3 text-sm opacity-70">যদি এক্সট্রা কিছু দিতে চান তাহলে এখানে লিখুন</p>
+                                    </div>
+
+                                    {startMonth && numMonths && (
                                         <div className="text-center py-5 bg-emerald-900/30 rounded-2xl mb-8">
                                             <p className="text-xl sm:text-2xl font-bold text-emerald-300">
                                                 Total: {getCurrentTotal().toLocaleString()} Tk
+                                                {!includeMonthlyFee && <span className="text-yellow-300 text-sm ml-2">(Extra Only)</span>}
                                             </p>
                                             <p className="text-base sm:text-lg mt-2 opacity-90">
                                                 Covering: {getCurrentCoveredDisplay()}
@@ -626,10 +659,10 @@ export default function Members() {
                                     </div>
 
                                     <div className="overflow-x-auto">
-                                        <table className="w-full min-w-[900px]">
+                                        <table className="w-full min-w-[1000px]">
                                             <thead className="bg-gray-800/50">
                                                 <tr>
-                                                    {["Date", "Amt/Mo", "Total", "Start", "Months", "Covered", "Running Total", "Running Mo", "Actions"].map(h => (
+                                                    {["Date", "Base/Mo", "Extra", "Total", "Start", "Months", "Covered", "Running Total", "Running Mo", "Actions"].map(h => (
                                                         <th key={h} className="px-4 sm:px-6 py-4 text-left text-xs sm:text-sm font-semibold uppercase tracking-wider opacity-80">{h}</th>
                                                     ))}
                                                 </tr>
@@ -637,37 +670,45 @@ export default function Members() {
                                             <tbody className="divide-y divide-gray-800">
                                                 {getRunningTotals().map((p) => {
                                                     const isEditing = editPayment === p.key;
-                                                    const currAmountPerMonth = isEditing ? editAmount : (p.amountPerMonth || p.amount);
-                                                    const currNumMonths = isEditing ? editNumMonths : p.numMonths;
-                                                    const currStartMonth = isEditing ? editStartMonth : p.startMonth;
-                                                    const currTotalAmount = Number(currAmountPerMonth) * Number(currNumMonths);
-                                                    const currCovered = getMonthRangeDisplay(currStartMonth, Number(currNumMonths));
+                                                    const currExtra = isEditing ? editExtraAmount : (p.extraAmount || 0);
+                                                    const basePerMonth = isEditing ? 200 : (p.amountPerMonth || 200);
+                                                    const currTotal = basePerMonth * Number(isEditing ? editNumMonths : p.numMonths) + Number(currExtra);
                                                     return (
                                                         <tr key={p.key} className="hover:bg-gray-800/40 transition">
                                                             <td className="px-4 sm:px-6 py-4 text-sm">{new Date(p.date).toLocaleDateString('en-GB')}</td>
+                                                            <td className="px-4 sm:px-6 py-4 font-bold">
+                                                                {p.amountPerMonth > 0 ? `${p.amountPerMonth} Tk` : <span className="text-gray-500">N/A</span>}
+                                                            </td>
                                                             <td className="px-4 sm:px-6 py-4">
                                                                 {isEditing ? (
-                                                                    <input type="number" className="bg-gray-700 rounded px-3 py-2 w-24 text-sm" value={editAmount} onChange={(e) => setEditAmount(e.target.value)} />
-                                                                ) : <span className="font-bold">{currAmountPerMonth} Tk</span>}
+                                                                    <input type="number" className="bg-gray-700 rounded px-3 py-2 w-24 text-sm" value={editExtraAmount} onChange={(e) => setEditExtraAmount(e.target.value)} />
+                                                                ) : <span className="font-bold text-yellow-300">{currExtra} Tk</span>}
                                                             </td>
-                                                            <td className="px-4 sm:px-6 py-4 font-bold text-emerald-400">{currTotalAmount.toLocaleString()} Tk</td>
+                                                            <td className="px-4 sm:px-6 py-4 font-bold text-emerald-400">{currTotal.toLocaleString()} Tk</td>
                                                             <td className="px-4 sm:px-6 py-4">
                                                                 {isEditing ? (
                                                                     <input type="month" className="bg-gray-700 rounded px-3 py-2 text-sm" value={editStartMonth} onChange={(e) => setEditStartMonth(e.target.value)} />
-                                                                ) : currStartMonth}
+                                                                ) : p.startMonth}
                                                             </td>
-                                                            <td className="px-4 sm:px-6 py-4 font-bold">{currNumMonths}</td>
-                                                            <td className="px-4 sm:px-6 py-4 text-emerald-300 text-sm">{currCovered}</td>
+                                                            <td className="px-4 sm:px-6 py-4">
+                                                                {isEditing ? (
+                                                                    <input type="number" min="1" max="12" className="bg-gray-700 rounded px-3 py-2 w-20 text-sm" value={editNumMonths} onChange={(e) => setEditNumMonths(e.target.value)} />
+                                                                ) : p.numMonths}
+                                                            </td>
+                                                            <td className="px-4 sm:px-6 py-4 text-emerald-300 text-sm">{getMonthRangeDisplay(isEditing ? editStartMonth : p.startMonth, isEditing ? editNumMonths : p.numMonths)}</td>
                                                             <td className="px-4 sm:px-6 py-4 font-bold text-emerald-400 text-lg">{p.runningAmount.toLocaleString()} Tk</td>
                                                             <td className="px-4 sm:px-6 py-4 font-bold">{p.runningMonths}</td>
                                                             <td className="px-4 sm:px-6 py-4">
                                                                 {isEditing ? (
                                                                     <>
                                                                         <button onClick={saveEditPayment} className="bg-emerald-600 hover:bg-emerald-700 px-4 py-2 rounded-lg mr-2 text-sm font-semibold">Save</button>
-                                                                        <button onClick={() => handleDeletePayment(p.key)} className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg text-sm font-semibold">Delete</button>
+                                                                        <button onClick={() => setEditPayment(null)} className="bg-gray-600 hover:bg-gray-700 px-4 py-2 rounded-lg text-sm font-semibold">Cancel</button>
                                                                     </>
                                                                 ) : (
                                                                     <button onClick={() => handleEditPayment(p.key, p)} className="bg-gray-700 hover:bg-gray-600 px-5 py-2 rounded-lg text-sm transition">Edit</button>
+                                                                )}
+                                                                {!isEditing && (
+                                                                    <button onClick={() => handleDeletePayment(p.key)} className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg ml-2 text-sm font-semibold">Delete</button>
                                                                 )}
                                                             </td>
                                                         </tr>
